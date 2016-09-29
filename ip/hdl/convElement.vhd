@@ -17,11 +17,18 @@ entity convElement is
         reset_n     :   in  std_logic;
         enable      :   in  std_logic;
 
+
         in_data     :   in  pixel_array (0 to KERNEL_SIZE * KERNEL_SIZE - 1);
+        in_dv    	:   in  std_logic;
+        in_fv    	:   in  std_logic;
+
         in_kernel   :   in  pixel_array (0 to KERNEL_SIZE * KERNEL_SIZE - 1);
         in_norm     :   in  std_logic_vector(PIXEL_SIZE-1 downto 0);
 
         out_data    :   out std_logic_vector(PIXEL_SIZE-1 downto 0)
+        out_dv    	:   out std_logic;
+        out_fv    	:   out std_logic;
+
     );
 end convElement;
 
@@ -37,6 +44,9 @@ architecture bhv of convElement is
 	signal 	res    		:	signed (PIXEL_SIZE + PIXEL_SIZE + 1  downto 0);
 
     begin
+		-- All valid : Logic and
+		all_valid    <=    in_dv and in_fv;
+		
         SIGNED_CAST     :   for i in 0 to ( KERNEL_SIZE * KERNEL_SIZE - 1 ) generate
             data_s(i)      <=  signed(in_data(i)(in_data(i)'LEFT) & (in_data(i)));
             kernel_s(i)    <=  signed(in_kernel(i)(in_kernel(i)'LEFT) & (in_kernel(i)));
@@ -53,7 +63,7 @@ architecture bhv of convElement is
             if (reset_n ='0') then
                 sum := (others=>'0');
             elsif (RISING_EDGE(clk)) then
-                if (enable='1') then
+                if (all_valid='1') then
 
                     Product : for i in 0 to (KERNEL_SIZE * KERNEL_SIZE-1) loop
                         mul(i) := data_s(i) * kernel_s(i);
@@ -76,5 +86,11 @@ architecture bhv of convElement is
     norm_s  <=  to_integer (unsigned(in_norm));
     res     <=  SHIFT_RIGHT (sums,norm_s);
     out_data <= std_logic_vector (res(PIXEL_SIZE -1  downto 0));
-
+    
+    --------------------------------------------------------------------------
+    -- Manage out_dv and out_fv : for now, only bufferize in_dv and in_fv
+    --------------------------------------------------------------------------
+	out_dv <= in_dv;
+	out_fv <= in_fv; 
+   
 end bhv;
